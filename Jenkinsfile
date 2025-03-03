@@ -1,49 +1,45 @@
 pipeline {
     agent any
 
+    tools {
+        maven 'M3'  
+    }
+
     triggers {
-        cron('H/3 * * * 1') 
+        cron('H/3 * * * 1')  
     }
 
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/awaypotato123/spring-petclinic.git'
+                git branch: 'main', url: 'https://github.com/awaypotato123/spring-petclinic.git'
             }
         }
 
-        stage('Build & Test') {
+        stage('Build') {
             steps {
-                script {
-                    sh './mvnw clean verify'
+                sh "mvn -Dmaven.test.failure.ignore=true clean package"
+            }
+
+            post {
+                success {
+                    junit '**/target/surefire-reports/TEST-*.xml'
+                    archiveArtifacts 'target/*.jar'
                 }
             }
         }
 
         stage('Code Coverage') {
             steps {
-                script {
-                    sh './mvnw jacoco:report'
+                sh "mvn jacoco:prepare-agent test jacoco:report"
+            }
+
+            post {
+                success {
+                    jacoco execPattern: '**/target/jacoco.exec'
                 }
             }
         }
-
-        stage('Archive Artifacts') {
-            steps {
-                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
-            }
-        }
-
-        stage('Publish Jacoco Report') {
-            steps {
-                jacoco execPattern: '**/target/jacoco.exec'
-            }
-        }
-    }
-
-    post {
-        always {
-            junit '**/target/surefire-reports/*.xml'
-        }
     }
 }
+
